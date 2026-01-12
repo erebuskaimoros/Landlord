@@ -1,0 +1,11 @@
+# Photo location sorter dependencies
+
+# Image EXIF data extraction
+Pillow>=10.0.0
+exifread>=3.0.0
+
+# Geocoding and distance calculations
+geopy>=2.4.0
+
+# Progress display
+tqdm>=4.65.0

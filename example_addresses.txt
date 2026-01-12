@@ -1,0 +1,15 @@
+# Example addresses file for sort_photos_by_location.py
+# One address per line. Lines starting with # are comments.
+
+# New York Landmarks
+350 5th Avenue, New York, NY 10118
+Central Park, New York, NY
+Times Square, New York, NY
+
+# Los Angeles Landmarks
+100 Universal City Plaza, Universal City, CA 91608
+6801 Hollywood Blvd, Hollywood, CA 90028
+
+# Chicago Landmarks
+233 S Wacker Dr, Chicago, IL 60606
+1060 W Addison St, Chicago, IL 60613
