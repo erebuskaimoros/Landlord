@@ -16,7 +16,7 @@ import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Protocol, Callable
 
 try:
     from PIL import Image
@@ -40,9 +40,113 @@ except ImportError:
     def tqdm(iterable, **kwargs):
         return iterable
 
+# HEIC/HEIF support (optional)
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+    HEIC_SUPPORTED = True
+except ImportError:
+    HEIC_SUPPORTED = False
+
 
 # Supported image extensions
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.tiff', '.tif', '.heic', '.heif'}
+
+
+class ProgressCallback(Protocol):
+    """Protocol for progress reporting during sorting operations."""
+
+    def on_geocoding_start(self, total: int) -> None:
+        """Called when geocoding begins."""
+        ...
+
+    def on_geocoding_progress(self, current: int, address: str, success: bool) -> None:
+        """Called after each address is geocoded."""
+        ...
+
+    def on_geocoding_complete(self, successful: int, total: int) -> None:
+        """Called when all geocoding is complete."""
+        ...
+
+    def on_scanning_start(self) -> None:
+        """Called when image scanning begins."""
+        ...
+
+    def on_scanning_complete(self, count: int) -> None:
+        """Called when image scanning is complete."""
+        ...
+
+    def on_sorting_start(self, total: int) -> None:
+        """Called when image sorting begins."""
+        ...
+
+    def on_sorting_progress(self, current: int, filename: str, destination: str) -> None:
+        """Called after each image is processed."""
+        ...
+
+    def on_sorting_complete(self, stats: dict) -> None:
+        """Called when sorting is complete."""
+        ...
+
+    def on_log(self, message: str) -> None:
+        """Called for general log messages."""
+        ...
+
+    def is_cancelled(self) -> bool:
+        """Check if operation should be cancelled."""
+        ...
+
+
+class CLIProgressCallback:
+    """Default callback that uses tqdm for CLI progress display."""
+
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+        self._cancelled = False
+        self._geocode_pbar = None
+        self._sort_pbar = None
+
+    def on_geocoding_start(self, total: int) -> None:
+        print("Geocoding addresses...")
+        self._geocode_pbar = tqdm(total=total, desc="Geocoding")
+
+    def on_geocoding_progress(self, current: int, address: str, success: bool) -> None:
+        if self._geocode_pbar:
+            self._geocode_pbar.update(1)
+        if not success:
+            print(f"  Warning: Could not geocode '{address}'")
+
+    def on_geocoding_complete(self, successful: int, total: int) -> None:
+        if self._geocode_pbar:
+            self._geocode_pbar.close()
+        print(f"\nSuccessfully geocoded {successful}/{total} addresses")
+
+    def on_scanning_start(self) -> None:
+        pass
+
+    def on_scanning_complete(self, count: int) -> None:
+        print(f"Found {count} images")
+
+    def on_sorting_start(self, total: int) -> None:
+        print("\nSorting images...")
+        self._sort_pbar = tqdm(total=total, desc="Processing")
+
+    def on_sorting_progress(self, current: int, filename: str, destination: str) -> None:
+        if self._sort_pbar:
+            self._sort_pbar.update(1)
+        if self.verbose:
+            print(f"  {filename} -> {destination}")
+
+    def on_sorting_complete(self, stats: dict) -> None:
+        if self._sort_pbar:
+            self._sort_pbar.close()
+
+    def on_log(self, message: str) -> None:
+        if self.verbose:
+            print(message)
+
+    def is_cancelled(self) -> bool:
+        return self._cancelled
 
 
 @dataclass
@@ -229,7 +333,7 @@ def find_images(folder_path: Path) -> list[Path]:
 def find_closest_location(
     coords: GPSCoordinates,
     locations: list[Location],
-    max_distance_km: float = 50.0
+    max_distance_km: float = 0.5
 ) -> Optional[Location]:
     """
     Find the closest location to the given coordinates.
@@ -290,9 +394,10 @@ def sort_photos(
     images_folder: Path,
     addresses: list[str],
     output_folder: Path,
-    max_distance_km: float = 50.0,
+    max_distance_km: float = 0.5,
     copy_mode: bool = False,
-    verbose: bool = False
+    verbose: bool = False,
+    progress_callback: Optional[ProgressCallback] = None
 ) -> dict:
     """
     Sort photos into folders based on their proximity to known addresses.
@@ -304,10 +409,15 @@ def sort_photos(
         max_distance_km: Maximum distance to consider for matching
         copy_mode: If True, copy files; if False, move files
         verbose: If True, print detailed progress
+        progress_callback: Optional callback for progress reporting
 
     Returns:
         Dictionary with statistics about the sorting operation
     """
+    # Use CLI callback if none provided
+    if progress_callback is None:
+        progress_callback = CLIProgressCallback(verbose=verbose)
+
     stats = {
         'total_images': 0,
         'sorted_images': 0,
@@ -320,10 +430,13 @@ def sort_photos(
     geocoder = Nominatim(user_agent="photo_location_sorter")
 
     # Geocode all addresses
-    print("Geocoding addresses...")
     locations: list[Location] = []
+    progress_callback.on_geocoding_start(len(addresses))
 
-    for address in tqdm(addresses, desc="Geocoding"):
+    for i, address in enumerate(addresses):
+        if progress_callback.is_cancelled():
+            return stats
+
         coords = geocode_address(address, geocoder)
         location = Location(
             name=sanitize_folder_name(address),
@@ -331,30 +444,24 @@ def sort_photos(
             coordinates=coords
         )
         locations.append(location)
-
-        if coords:
-            if verbose:
-                print(f"  {address} -> ({coords.latitude:.6f}, {coords.longitude:.6f})")
-        else:
-            print(f"  Warning: Could not geocode '{address}'")
+        progress_callback.on_geocoding_progress(i + 1, address, coords is not None)
 
     # Filter locations with valid coordinates
     valid_locations = [loc for loc in locations if loc.coordinates is not None]
+    progress_callback.on_geocoding_complete(len(valid_locations), len(addresses))
 
     if not valid_locations:
-        print("Error: No addresses could be geocoded. Please check your addresses.")
+        progress_callback.on_log("Error: No addresses could be geocoded.")
         return stats
 
-    print(f"\nSuccessfully geocoded {len(valid_locations)}/{len(addresses)} addresses")
-
     # Find all images
-    print(f"\nScanning for images in {images_folder}...")
+    progress_callback.on_scanning_start()
     images = find_images(images_folder)
     stats['total_images'] = len(images)
-    print(f"Found {len(images)} images")
+    progress_callback.on_scanning_complete(len(images))
 
     if not images:
-        print("No images found in the specified folder.")
+        progress_callback.on_log("No images found in the specified folder.")
         return stats
 
     # Create output folder
@@ -365,8 +472,12 @@ def sort_photos(
     no_gps_folder = output_folder / "_no_gps_data"
 
     # Process each image
-    print("\nSorting images...")
-    for image_path in tqdm(images, desc="Processing"):
+    progress_callback.on_sorting_start(len(images))
+
+    for i, image_path in enumerate(images):
+        if progress_callback.is_cancelled():
+            return stats
+
         # Extract GPS coordinates
         coords = extract_gps_from_image(image_path)
 
@@ -380,8 +491,7 @@ def sort_photos(
             else:
                 shutil.move(str(image_path), dest)
 
-            if verbose:
-                print(f"  {image_path.name}: No GPS data")
+            progress_callback.on_sorting_progress(i + 1, image_path.name, "_no_gps_data")
             continue
 
         # Find closest location
@@ -397,8 +507,7 @@ def sort_photos(
             else:
                 shutil.move(str(image_path), dest)
 
-            if verbose:
-                print(f"  {image_path.name}: No location match within {max_distance_km}km")
+            progress_callback.on_sorting_progress(i + 1, image_path.name, "_unknown_location")
             continue
 
         # Create location folder and move image
@@ -427,9 +536,9 @@ def sort_photos(
             stats['locations'][closest.name] = 0
         stats['locations'][closest.name] += 1
 
-        if verbose:
-            print(f"  {image_path.name} -> {closest.name}")
+        progress_callback.on_sorting_progress(i + 1, image_path.name, closest.name)
 
+    progress_callback.on_sorting_complete(stats)
     return stats
 
 
@@ -450,11 +559,25 @@ def print_stats(stats: dict):
 
 
 def main():
+    # Launch GUI if no arguments provided
+    if len(sys.argv) == 1:
+        try:
+            from gui import run_gui
+            run_gui()
+            return
+        except ImportError as e:
+            print(f"Could not launch GUI: {e}")
+            print("Run with --help to see CLI usage.")
+            sys.exit(1)
+
     parser = argparse.ArgumentParser(
         description='Sort photos into folders based on their GPS location metadata.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Launch the graphical interface
+  python sort_photos_by_location.py
+
   # Using an addresses file (one address per line)
   python sort_photos_by_location.py -a addresses.txt -i ./photos -o ./sorted
 
@@ -490,8 +613,8 @@ Examples:
     parser.add_argument(
         '-d', '--max-distance',
         type=float,
-        default=50.0,
-        help='Maximum distance (km) to consider a location match (default: 50)'
+        default=0.5,
+        help='Maximum distance (km) to consider a location match (default: 0.5)'
     )
 
     parser.add_argument(
