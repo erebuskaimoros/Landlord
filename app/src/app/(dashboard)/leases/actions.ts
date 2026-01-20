@@ -256,3 +256,95 @@ export async function deleteLeaseDocumentAction(
     return { success: false, error: error instanceof Error ? error.message : 'Failed to delete document' }
   }
 }
+
+const BUCKET_NAME = 'lease-documents'
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/png',
+  'image/jpeg',
+]
+
+export async function uploadLeaseDocumentAction(
+  leaseId: string,
+  formData: FormData
+): Promise<ActionResult> {
+  const organizationId = await getUserOrganizationId()
+  if (!organizationId) {
+    return { success: false, error: 'No organization found' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify lease belongs to organization
+  const { data: lease, error: leaseError } = await supabase
+    .from('leases')
+    .select('id')
+    .eq('id', leaseId)
+    .eq('organization_id', organizationId)
+    .single()
+
+  if (leaseError || !lease) {
+    return { success: false, error: 'Lease not found' }
+  }
+
+  const file = formData.get('file') as File
+  if (!file) {
+    return { success: false, error: 'No file provided' }
+  }
+
+  // Validate file size
+  if (file.size > MAX_FILE_SIZE) {
+    return { success: false, error: 'File size exceeds 10MB limit' }
+  }
+
+  // Validate mime type
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    return { success: false, error: 'Invalid file type. Allowed types: PDF, DOC, DOCX, PNG, JPG' }
+  }
+
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  // Generate unique file path: leaseId/timestamp-filename
+  const timestamp = Date.now()
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+  const filePath = `${leaseId}/${timestamp}-${sanitizedName}`
+
+  // Upload to storage
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(filePath, file)
+
+  if (uploadError) {
+    return { success: false, error: `Failed to upload file: ${uploadError.message}` }
+  }
+
+  // Create database record
+  const { data, error } = await supabase
+    .from('lease_documents')
+    .insert({
+      lease_id: leaseId,
+      name: file.name,
+      file_path: filePath,
+      file_size: file.size,
+      mime_type: file.type,
+      uploaded_by: user.id,
+    } as never)
+    .select()
+    .single()
+
+  if (error) {
+    // Try to clean up uploaded file if database insert fails
+    await supabase.storage.from(BUCKET_NAME).remove([filePath])
+    return { success: false, error: `Failed to save document record: ${error.message}` }
+  }
+
+  revalidatePath(`/leases/${leaseId}`)
+  return { success: true, data }
+}

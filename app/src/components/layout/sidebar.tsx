@@ -11,6 +11,9 @@ import {
   Users,
   FileText,
   DollarSign,
+  Wrench,
+  ClipboardList,
+  Package,
   Settings,
   X,
 } from 'lucide-react'
@@ -23,6 +26,9 @@ const navigation = [
   { name: 'Tenants', href: '/tenants', icon: Users },
   { name: 'Leases', href: '/leases', icon: FileText },
   { name: 'Transactions', href: '/transactions', icon: DollarSign },
+  { name: 'Tasks', href: '/tasks', icon: ClipboardList },
+  { name: 'Contractors', href: '/contractors', icon: Wrench },
+  { name: 'Assets', href: '/assets', icon: Package },
 ]
 
 const secondaryNavigation = [

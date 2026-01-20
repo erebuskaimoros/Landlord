@@ -252,10 +252,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 -- PERFORMANCE: Text search indexes for global search
 -- ============================================================================
 
+-- Requires pg_trgm extension for text search
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- Create GIN indexes for text search patterns
 CREATE INDEX IF NOT EXISTS idx_units_address_gin ON units USING gin (address gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_tenants_name_gin ON tenants USING gin ((first_name || ' ' || last_name) gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_buildings_name_gin ON buildings USING gin (name gin_trgm_ops);
-
--- Note: Requires pg_trgm extension, adding if not exists
-CREATE EXTENSION IF NOT EXISTS pg_trgm;

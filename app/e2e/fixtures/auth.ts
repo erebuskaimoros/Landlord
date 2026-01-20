@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test'
+import { test as base, expect, type Page } from '@playwright/test'
 
 // Test user credentials - these should match a seeded test user
 // For local testing, create a test user with these credentials
@@ -8,7 +8,7 @@ const TEST_USER = {
 }
 
 export type AuthFixtures = {
-  authenticatedPage: typeof import('@playwright/test').Page
+  authenticatedPage: Page
 }
 
 export const test = base.extend<AuthFixtures>({

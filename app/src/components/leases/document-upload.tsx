@@ -4,7 +4,27 @@ import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Upload, FileText, X, Loader2 } from 'lucide-react'
-import { validateFile } from '@/services/lease-documents'
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/png',
+  'image/jpeg',
+]
+
+function validateFile(file: File): { valid: boolean; error?: string } {
+  if (file.size > MAX_FILE_SIZE) {
+    return { valid: false, error: 'File size exceeds 10MB limit' }
+  }
+
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    return { valid: false, error: 'Invalid file type. Allowed: PDF, DOC, DOCX, PNG, JPG' }
+  }
+
+  return { valid: true }
+}
 
 interface DocumentUploadProps {
   onUpload: (file: File) => Promise<void>

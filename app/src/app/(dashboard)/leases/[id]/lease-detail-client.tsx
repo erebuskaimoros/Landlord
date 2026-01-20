@@ -10,8 +10,8 @@ import { ArrowLeft, Pencil, Trash2, FileText, User, Home, Calendar, DollarSign, 
 import { LeaseForm } from '@/components/forms/lease-form'
 import { DocumentUpload } from '@/components/leases/document-upload'
 import { DocumentsList } from '@/components/leases/documents-list'
-import { deleteLeaseAction, deleteLeaseDocumentAction } from '@/app/(dashboard)/leases/actions'
-import { uploadLeaseDocument, type LeaseDocumentWithUrl } from '@/services/lease-documents'
+import { deleteLeaseAction, deleteLeaseDocumentAction, uploadLeaseDocumentAction } from '@/app/(dashboard)/leases/actions'
+import type { LeaseDocumentWithUrl } from '@/services/lease-documents'
 import { toast } from 'sonner'
 import type { Tables } from '@/types/database'
 import type { LeaseWithRelations } from '@/services/leases'
@@ -56,9 +56,16 @@ export function LeaseDetailClient({ lease, units, tenants, documents }: LeaseDet
 
   async function handleUploadDocument(file: File) {
     try {
-      await uploadLeaseDocument(lease.id, file)
-      toast.success('Document uploaded successfully')
-      router.refresh()
+      const formData = new FormData()
+      formData.append('file', file)
+      const result = await uploadLeaseDocumentAction(lease.id, formData)
+      if (result.success) {
+        toast.success('Document uploaded successfully')
+        router.refresh()
+      } else {
+        toast.error(result.error || 'Failed to upload document')
+        throw new Error(result.error)
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to upload document')
       throw error

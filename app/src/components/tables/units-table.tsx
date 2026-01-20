@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Table,
   TableBody,
@@ -68,6 +69,7 @@ export function UnitsTable({ units, buildings = [] }: UnitsTableProps) {
   const [editingUnit, setEditingUnit] = useState<Tables<'units'> | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const { canEdit, canDelete } = useUserRole()
+  const router = useRouter()
 
   async function handleDelete(id: string) {
     if (!confirm('Are you sure you want to delete this unit? This action cannot be undone.')) {
@@ -110,10 +112,14 @@ export function UnitsTable({ units, buildings = [] }: UnitsTableProps) {
             {units.map((unit) => {
               const building = buildings.find((b) => b.id === unit.building_id)
               return (
-              <TableRow key={unit.id}>
+              <TableRow
+                key={unit.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => router.push(`/units/${unit.id}`)}
+              >
                 <TableCell>{formatAddress(unit)}</TableCell>
                 {buildings.length > 0 && (
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     {building ? (
                       <Link
                         href={`/buildings/${building.id}`}
@@ -134,7 +140,7 @@ export function UnitsTable({ units, buildings = [] }: UnitsTableProps) {
                     ? `$${unit.rental_price.toLocaleString()}/mo`
                     : '-'}
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button

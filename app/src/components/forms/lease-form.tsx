@@ -45,10 +45,11 @@ interface LeaseFormProps {
   lease?: Tables<'leases'> | null
   units: Tables<'units'>[]
   tenants: Tables<'tenants'>[]
+  defaultUnitId?: string
   onSuccess?: () => void
 }
 
-export function LeaseForm({ open, onOpenChange, lease, units, tenants, onSuccess }: LeaseFormProps) {
+export function LeaseForm({ open, onOpenChange, lease, units, tenants, defaultUnitId, onSuccess }: LeaseFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showDepositTerms, setShowDepositTerms] = useState(
     !!lease?.security_deposit || !!lease?.terms
@@ -59,7 +60,7 @@ export function LeaseForm({ open, onOpenChange, lease, units, tenants, onSuccess
     resolver: zodResolver(leaseFullSchema),
     defaultValues: {
       tenant_id: lease?.tenant_id || '',
-      unit_id: lease?.unit_id || '',
+      unit_id: lease?.unit_id || defaultUnitId || '',
       start_date: lease?.start_date || '',
       end_date: lease?.end_date || '',
       rent_amount: lease?.rent_amount || 0,
