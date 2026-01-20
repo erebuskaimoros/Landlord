@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
-export default function SignupPage() {
+function SignupForm() {
   const searchParams = useSearchParams()
   const redirectUrl = searchParams.get('redirect')
   const prefillEmail = searchParams.get('email')
@@ -80,32 +80,15 @@ export default function SignupPage() {
       return
     }
 
-    // Create organization for new users
-    const { data: orgResult, error: orgError } = await (supabase
-      .from('organizations') as ReturnType<typeof supabase.from>)
-      .insert({
-        name: organizationName,
-      } as Record<string, unknown>)
-      .select()
-      .single()
+    // Create organization for new users using the database function
+    // This bypasses RLS issues with newly created sessions
+    const { error: orgError } = await supabase.rpc('create_organization_with_owner', {
+      org_name: organizationName,
+      owner_user_id: authData.user.id,
+    } as never)
 
-    if (orgError || !orgResult) {
-      setError('Failed to create organization: ' + (orgError?.message || 'Unknown error'))
-      setLoading(false)
-      return
-    }
-
-    // Add user as owner of the organization
-    const { error: memberError } = await (supabase
-      .from('organization_members') as ReturnType<typeof supabase.from>)
-      .insert({
-        organization_id: (orgResult as { id: string }).id,
-        user_id: authData.user.id,
-        role: 'owner',
-      } as Record<string, unknown>)
-
-    if (memberError) {
-      setError('Failed to add user to organization: ' + memberError.message)
+    if (orgError) {
+      setError('Failed to create organization: ' + orgError.message)
       setLoading(false)
       return
     }
@@ -115,94 +98,109 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Landlord</CardTitle>
-          <CardDescription className="text-center">
-            {isInvitation ? 'Create your account to accept the invitation' : 'Create your account'}
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-                {error}
-              </div>
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center">Landlord</CardTitle>
+        <CardDescription className="text-center">
+          {isInvitation ? 'Create your account to accept the invitation' : 'Create your account'}
+        </CardDescription>
+      </CardHeader>
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+              {error}
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Full Name</Label>
+            <Input
+              id="fullName"
+              type="text"
+              placeholder="John Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={!!prefillEmail}
+            />
+            {prefillEmail && (
+              <p className="text-xs text-gray-500">
+                Use this email to match your invitation
+              </p>
             )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Enter a password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+          </div>
+          {!isInvitation && (
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="organizationName">Organization Name</Label>
               <Input
-                id="fullName"
+                id="organizationName"
                 type="text"
-                placeholder="John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                placeholder="My Property Company"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
                 required
               />
+              <p className="text-xs text-gray-500">
+                This will be your portfolio name
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={!!prefillEmail}
-              />
-              {prefillEmail && (
-                <p className="text-xs text-gray-500">
-                  Use this email to match your invitation
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter a password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
-            {!isInvitation && (
-              <div className="space-y-2">
-                <Label htmlFor="organizationName">Organization Name</Label>
-                <Input
-                  id="organizationName"
-                  type="text"
-                  placeholder="My Property Company"
-                  value={organizationName}
-                  onChange={(e) => setOrganizationName(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  This will be your portfolio name
-                </p>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create account'}
-            </Button>
-            <p className="text-sm text-center text-gray-600">
-              Already have an account?{' '}
-              <Link
-                href={redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : '/login'}
-                className="text-blue-600 hover:underline"
-              >
-                Sign in
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Card>
+          )}
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-4">
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Creating account...' : 'Create account'}
+          </Button>
+          <p className="text-sm text-center text-gray-600">
+            Already have an account?{' '}
+            <Link
+              href={redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : '/login'}
+              className="text-blue-600 hover:underline"
+            >
+              Sign in
+            </Link>
+          </p>
+        </CardFooter>
+      </form>
+    </Card>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <Suspense fallback={
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">Landlord</CardTitle>
+            <CardDescription className="text-center">Loading...</CardDescription>
+          </CardHeader>
+        </Card>
+      }>
+        <SignupForm />
+      </Suspense>
     </div>
   )
 }

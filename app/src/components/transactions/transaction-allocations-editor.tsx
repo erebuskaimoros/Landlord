@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChevronDown, ChevronUp, Split, Trash2 } from 'lucide-react'
-import { calculateEqualSplit, type AllocationInput } from '@/services/transaction-allocations'
+import { calculateEqualSplit, type AllocationInput } from '@/services/transaction-allocations-shared'
 import type { Tables } from '@/types/database'
 
 interface TransactionAllocationsEditorProps {

@@ -10,7 +10,8 @@ export const unitCreateSchema = z.object({
   city: z.string().max(100).optional().nullable(),
   state: z.string().max(50).optional().nullable(),
   zip_code: z.string().max(20).optional().nullable(),
-  building_id: z.string().uuid().optional().nullable(),
+  // Allow empty string or valid UUID - transform empty string to null
+  building_id: z.string().optional().nullable().transform((val) => val === '' ? null : val),
 })
 
 // Full schema for later phases
@@ -26,7 +27,7 @@ export const unitFullSchema = unitCreateSchema.extend({
   pet_policy: z.string().max(1000).optional().nullable(),
   amenities: z.array(z.string()).optional().nullable(),
   notes: z.string().max(10000).optional().nullable(),
-  building_id: z.string().uuid().optional().nullable(),
+  // building_id is inherited from unitCreateSchema with empty string handling
 })
 
 // Update schema (all fields optional except you can't change org)

@@ -30,32 +30,15 @@ export default function OnboardingPage() {
       return
     }
 
-    // Create organization
-    const { data: orgResult, error: orgError } = await (supabase
-      .from('organizations') as ReturnType<typeof supabase.from>)
-      .insert({
-        name: organizationName,
-      } as Record<string, unknown>)
-      .select()
-      .single()
+    // Create organization using the database function
+    // This bypasses RLS issues with newly created sessions
+    const { error: orgError } = await supabase.rpc('create_organization_with_owner', {
+      org_name: organizationName,
+      owner_user_id: user.id,
+    } as never)
 
-    if (orgError || !orgResult) {
-      setError('Failed to create organization: ' + (orgError?.message || 'Unknown error'))
-      setLoading(false)
-      return
-    }
-
-    // Add user as owner
-    const { error: memberError } = await (supabase
-      .from('organization_members') as ReturnType<typeof supabase.from>)
-      .insert({
-        organization_id: (orgResult as { id: string }).id,
-        user_id: user.id,
-        role: 'owner',
-      } as Record<string, unknown>)
-
-    if (memberError) {
-      setError('Failed to add user to organization: ' + memberError.message)
+    if (orgError) {
+      setError('Failed to create organization: ' + orgError.message)
       setLoading(false)
       return
     }

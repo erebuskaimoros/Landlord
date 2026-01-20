@@ -163,6 +163,8 @@ export type Database = {
           pet_policy: string | null
           amenities: string[] | null
           notes: string | null
+          latitude: number | null
+          longitude: number | null
           created_at: string
           updated_at: string
         }
@@ -186,6 +188,8 @@ export type Database = {
           pet_policy?: string | null
           amenities?: string[] | null
           notes?: string | null
+          latitude?: number | null
+          longitude?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -209,6 +213,8 @@ export type Database = {
           pet_policy?: string | null
           amenities?: string[] | null
           notes?: string | null
+          latitude?: number | null
+          longitude?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -537,6 +543,356 @@ export type Database = {
           created_at?: string
         }
       }
+      // Phase 2: Contractors
+      contractors: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          email: string | null
+          phone: string | null
+          address: string | null
+          service_types: string[]
+          hourly_rate: number | null
+          average_rating: number
+          total_jobs: number
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          service_types?: string[]
+          hourly_rate?: number | null
+          average_rating?: number
+          total_jobs?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          service_types?: string[]
+          hourly_rate?: number | null
+          average_rating?: number
+          total_jobs?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      // Phase 2: Tasks
+      tasks: {
+        Row: {
+          id: string
+          organization_id: string
+          unit_id: string
+          title: string
+          description: string | null
+          status: 'open' | 'in_progress' | 'completed' | 'cancelled'
+          priority: 'low' | 'medium' | 'high' | 'urgent'
+          due_date: string | null
+          assigned_contractor_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          estimated_cost: number | null
+          actual_cost: number | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          unit_id: string
+          title: string
+          description?: string | null
+          status?: 'open' | 'in_progress' | 'completed' | 'cancelled'
+          priority?: 'low' | 'medium' | 'high' | 'urgent'
+          due_date?: string | null
+          assigned_contractor_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          estimated_cost?: number | null
+          actual_cost?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          unit_id?: string
+          title?: string
+          description?: string | null
+          status?: 'open' | 'in_progress' | 'completed' | 'cancelled'
+          priority?: 'low' | 'medium' | 'high' | 'urgent'
+          due_date?: string | null
+          assigned_contractor_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          estimated_cost?: number | null
+          actual_cost?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      recurring_tasks: {
+        Row: {
+          id: string
+          organization_id: string
+          unit_id: string
+          title: string
+          description: string | null
+          priority: 'low' | 'medium' | 'high' | 'urgent'
+          interval_days: number
+          next_due_date: string
+          last_generated_at: string | null
+          assigned_contractor_id: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          unit_id: string
+          title: string
+          description?: string | null
+          priority?: 'low' | 'medium' | 'high' | 'urgent'
+          interval_days: number
+          next_due_date: string
+          last_generated_at?: string | null
+          assigned_contractor_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          unit_id?: string
+          title?: string
+          description?: string | null
+          priority?: 'low' | 'medium' | 'high' | 'urgent'
+          interval_days?: number
+          next_due_date?: string
+          last_generated_at?: string | null
+          assigned_contractor_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      // Phase 2: Contractor Ratings
+      contractor_ratings: {
+        Row: {
+          id: string
+          organization_id: string
+          contractor_id: string
+          task_id: string
+          rating: number
+          review: string | null
+          rated_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          contractor_id: string
+          task_id: string
+          rating: number
+          review?: string | null
+          rated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          contractor_id?: string
+          task_id?: string
+          rating?: number
+          review?: string | null
+          rated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      // Phase 2: Photos
+      photos: {
+        Row: {
+          id: string
+          organization_id: string
+          unit_id: string
+          task_id: string | null
+          file_path: string
+          file_name: string
+          file_size: number | null
+          mime_type: string | null
+          event_type: 'move_in' | 'move_out' | 'maintenance' | 'inspection' | 'general'
+          caption: string | null
+          taken_at: string | null
+          uploaded_by: string | null
+          latitude: number | null
+          longitude: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          unit_id: string
+          task_id?: string | null
+          file_path: string
+          file_name: string
+          file_size?: number | null
+          mime_type?: string | null
+          event_type?: 'move_in' | 'move_out' | 'maintenance' | 'inspection' | 'general'
+          caption?: string | null
+          taken_at?: string | null
+          uploaded_by?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          unit_id?: string
+          task_id?: string | null
+          file_path?: string
+          file_name?: string
+          file_size?: number | null
+          mime_type?: string | null
+          event_type?: 'move_in' | 'move_out' | 'maintenance' | 'inspection' | 'general'
+          caption?: string | null
+          taken_at?: string | null
+          uploaded_by?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      // Phase 2: Asset Maintenance Logs
+      asset_maintenance_logs: {
+        Row: {
+          id: string
+          organization_id: string
+          asset_id: string
+          task_id: string | null
+          service_date: string
+          service_type: string
+          description: string | null
+          cost: number | null
+          performed_by: string | null
+          contractor_id: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          asset_id: string
+          task_id?: string | null
+          service_date?: string
+          service_type: string
+          description?: string | null
+          cost?: number | null
+          performed_by?: string | null
+          contractor_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          asset_id?: string
+          task_id?: string | null
+          service_date?: string
+          service_type?: string
+          description?: string | null
+          cost?: number | null
+          performed_by?: string | null
+          contractor_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      // Phase 2: Assets
+      assets: {
+        Row: {
+          id: string
+          organization_id: string
+          unit_id: string
+          name: string
+          asset_type: string
+          make: string | null
+          model: string | null
+          serial_number: string | null
+          purchase_date: string | null
+          purchase_price: number | null
+          warranty_expiry: string | null
+          expected_lifespan_years: number | null
+          condition: 'excellent' | 'good' | 'fair' | 'poor'
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          unit_id: string
+          name: string
+          asset_type: string
+          make?: string | null
+          model?: string | null
+          serial_number?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          warranty_expiry?: string | null
+          expected_lifespan_years?: number | null
+          condition?: 'excellent' | 'good' | 'fair' | 'poor'
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          unit_id?: string
+          name?: string
+          asset_type?: string
+          make?: string | null
+          model?: string | null
+          serial_number?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          warranty_expiry?: string | null
+          expected_lifespan_years?: number | null
+          condition?: 'excellent' | 'good' | 'fair' | 'poor'
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -576,6 +932,13 @@ export type Database = {
           net_income: number
         }[]
       }
+      create_organization_with_owner: {
+        Args: {
+          org_name: string
+          owner_user_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       user_role: 'owner' | 'manager' | 'viewer'
@@ -583,6 +946,10 @@ export type Database = {
       lease_status: 'draft' | 'active' | 'expired' | 'terminated'
       timeline_event_type: 'lease_signed' | 'move_in' | 'move_out' | 'rent_payment' | 'late_payment' | 'maintenance_request' | 'inspection' | 'communication' | 'violation' | 'renewal' | 'other'
       transaction_type: 'income' | 'expense'
+      task_status: 'open' | 'in_progress' | 'completed' | 'cancelled'
+      task_priority: 'low' | 'medium' | 'high' | 'urgent'
+      asset_condition: 'excellent' | 'good' | 'fair' | 'poor'
+      photo_event_type: 'move_in' | 'move_out' | 'maintenance' | 'inspection' | 'general'
     }
   }
 }
